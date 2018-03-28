@@ -42,7 +42,7 @@
         "message": "Data przekazania darowizny"
     },
     "editThis_Show_Christmas_Icon": {
-        "message": "Pokaż ikonę z czapką Świętego Mikołaja"
+        "message": "Pokaż ikonkę czapki Świętego Mikołaja"
     },
     "editThis_help": {
         "message": "Pomoc"
@@ -64,6 +64,10 @@
     },
     "editThis_Show_Domain_Before_Name": {
         "message": "Pokaż domenę przed nazwą ciasteczka"
+    },
+    "editThis_paypalSupportCharity": {
+        "message": "EditThisCookie is free to use but please donate now with $1. All proceeds go to charities! :)<br><br>Move the slider to change the amount",
+        "description": "It will read: Donate now with PayPal"
     },
     "editThis_cookiesProtected": {
         "message": "Chronione ciasteczka tylko do odczytu"
@@ -256,7 +260,10 @@
         "message": "Usuń wszystkie ciasteczka"
     },
     "editThis_statsSharePolicy": {
-        "message": "Gwarantujemy, że nie udostępniamy żadnych danych osobowych osobom trzecim!"
+        "message": "Gwarantujemy, że nie są udostępniane żadne dane osobowe!"
+    },
+    "editThis_Contribute_Other": {
+        "message": "Contribute with another method"
     },
     "editThis_ReadOnly_Def": {
         "message": "Chronione ciasteczka są takimi ciasteczkami, które nie mogą być modyfikowane przez żadną stronę lub rozszerzenie"

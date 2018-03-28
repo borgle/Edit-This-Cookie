@@ -65,8 +65,12 @@
     "editThis_Show_Domain_Before_Name": {
         "message": "Показувати ім'я домену перед іменем кукі"
     },
+    "editThis_paypalSupportCharity": {
+        "message": "EditThisCookie is free to use but please donate now with $1. All proceeds go to charities! :)<br><br>Move the slider to change the amount",
+        "description": "It will read: Donate now with PayPal"
+    },
     "editThis_cookiesProtected": {
-        "message": "Кукі дозволене тільки для читання"
+        "message": "Кукі, дозволене тільки для читання"
     },
     "editThis_support": {
         "message": "Підтримайте мене"
@@ -102,7 +106,7 @@
         "message": "Зберегти"
     },
     "editThis_Show_ContextMenu_helper": {
-        "message": "Коли увімкнене, ти зможеш приховувати іконку на тулбарі клацнувши правою кнопкою миші на ній!"
+        "message": "Якщо увімкнуто, ви зможете сховати іконку на панелі, клацнувши по ній правою кнопкою миші!"
     },
     "editThis_statsSince": {
         "message": "Статистика кукі починаючи з: $1"
@@ -156,10 +160,10 @@
         "message": "Статистика"
     },
     "editThis_Use_Custom_Locale": {
-        "message": "ВИбрати іншу мову"
+        "message": "Вибрати іншу мову"
     },
     "editThis_Sort_Cookies_Domain_Alpha": {
-        "message": "по домену та імені"
+        "message": "За доменом та іменем"
     },
     "editThis_Charity_Message": {
         "message": "Ти допоможеш дітям, які зараз у скруті по всьому світу, тому що $1% твоєї пожертви надсилається"
@@ -258,6 +262,9 @@
     "editThis_statsSharePolicy": {
         "message": "Ми гарантуємо, що будь-яка персональна інформація не буде розповсюдженою!"
     },
+    "editThis_Contribute_Other": {
+        "message": "Contribute with another method"
+    },
     "editThis_ReadOnly_Def": {
         "message": "Захищене кукі не може бути модифіковано будь-яким браузером або розширенням"
     },
@@ -313,7 +320,7 @@
         "message": "Закінчення"
     },
     "editThis_Sort_Cookies_Alpha": {
-        "message": "по імені"
+        "message": "за ім'ям"
     },
     "editThis_donations": {
         "message": "Пожертви"

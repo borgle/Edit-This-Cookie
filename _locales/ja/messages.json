@@ -65,6 +65,10 @@
     "editThis_Show_Domain_Before_Name": {
         "message": "Show the domain before the cookie's name"
     },
+    "editThis_paypalSupportCharity": {
+        "message": "EditThisCookie is free to use but please donate now with $1. All proceeds go to charities! :)<br><br>Move the slider to change the amount",
+        "description": "It will read: Donate now with PayPal"
+    },
     "editThis_cookiesProtected": {
         "message": "読み取り専用の保護されたCookie"
     },
@@ -126,7 +130,7 @@
         "message": "インポートするには、ここにCookieを貼り付けます。許可されたフォーマット:"
     },
     "editThis_Send_Donations_To": {
-        "message": "You can send donations to:"
+        "message": "こちらから寄付をお願いします。"
     },
     "editThis_description": {
         "message": "EditThisCookieはCookie管理ソフトです。Cookieを追加、削除、編集、検索、保護、そしてブロックすることができます！"
@@ -184,7 +188,7 @@
         "message": "Cookieをインポートしました"
     },
     "editThis_secure": {
-        "message": "セキュア"
+        "message": "安全"
     },
     "editThis_cookiesShortened": {
         "message": "Cookie の有効期限を短縮しました"
@@ -257,6 +261,9 @@
     },
     "editThis_statsSharePolicy": {
         "message": "個人情報を第三者に開示することが決してないことをお約束します！"
+    },
+    "editThis_Contribute_Other": {
+        "message": "Contribute with another method"
     },
     "editThis_ReadOnly_Def": {
         "message": "保護されたCookieは、Webサイトまたは拡張機能によって変更されることはありません。"
@@ -358,7 +365,7 @@
         "message": "まだデータがありません :("
     },
     "editThis_newFilter": {
-        "message": "New filter"
+        "message": "新しいフィルター"
     },
     "editThis_hour": {
         "message": "時"

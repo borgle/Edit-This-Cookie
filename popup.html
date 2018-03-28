@@ -3,25 +3,17 @@
 		<title>ETC</title>
 		<link rel="stylesheet" type="text/css" href="/css/smoothness/jquery-ui-1.10.4.custom.min.css"/>
 		<link rel="stylesheet" type="text/css" href="/lib/uniform/uniform.default.css" />
-		<link rel="stylesheet" type="text/css" href="/lib/mobiscroll/dev/css/mobiscroll.core-2.0.2.css"/>
-		<link rel="stylesheet" type="text/css"href="/lib/mobiscroll/dev/css/mobiscroll.android-ics-2.0.css" />
-		<link rel="stylesheet" type="text/css" href="/css/popup-mobiscroll-datepicker-fixes.css">
 		<link rel="stylesheet" type="text/css" href="/css/opensans/opensans.css" >
 		<link rel="stylesheet" type="text/css" href="/css/font-awesome-4.6.3/css/font-awesome.min.css">
 		<link rel="stylesheet" type="text/css" href="/css/popup.css">
 		<link rel="stylesheet" type="text/css" href="/css/popup-accordion.css">
-		
+
 		<script type="text/javascript" src="/lib/jquery-2.0.3.min.js"></script>
 		<script type="text/javascript" src="/lib/jquery-ui-1.10.4.custom.min.js"></script>
 		<script type="text/javascript" src="/lib/uniform/jquery.uniform.js"></script>
 		<script type="text/javascript" src="/lib/custom_i18n.js"></script>
 		<script type="text/javascript" src="/lib/i18n_translator.js"></script>
 		<script type="text/javascript" src="/lib/object-watch.js"></script>
-		
-		<script type="text/javascript" src="/lib/mobiscroll/dev/js/mobiscroll.core-2.0.2.js"></script>
-		<script type="text/javascript" src="/lib/mobiscroll/dev/js/mobiscroll.android-ics-2.0.js"></script>
-		<script type="text/javascript" src="/lib/mobiscroll/dev/js/mobiscroll.datetime-2.0.2.js"></script>
-		<script type="text/javascript" src="/lib/mobiscroll/dev/js/mobiscroll.select-2.0.2.js"></script>
 
 		<script type="text/javascript" src="/js/cookie_helpers.js"></script>
 		<script type="text/javascript" src="/js/utils.js"></script>
@@ -30,11 +22,11 @@
 	</head>
 	<body class="unselectable">
 		<div id="loader-container1"></div>
-		
+
 		<div id="loader-container">
 			<i class="fa fa-cog fa-spin fa-3x"></i>
 		</div>
-		
+
 		<div id="alert_wrapper">
 			<div id="alert_background"></div>
 			<div id="alert_box">
@@ -49,12 +41,12 @@
 				</div>
 			</div>
 		</div>
-		
+
 		<div id="wrapper">
 			<div id="searchBox" class="ui-corner-all">
 				<input type="text" id="searchField" value="" />
 			</div>
-			
+
 			<div class="commands-table" style="opacity: 0;">
 				<div class="commands-row">
 					<a id="backToList" i18n_title="backToList" style="display: none;">
@@ -98,14 +90,14 @@
 			<div id="cookieSearchCondition">
 				<input class="searchCondition" type="text" i18n_placeholder="URL" placeholder="">
 			</div>
-			
+
 			<div id="noCookies" i18n="no_cookies">
 			</div>
-			
+
 			<div id="cookiesList">
 			</div>
-			
-			
+
+
 			<div>
 				<div id="cookieFilter" class="ui-accordion ui-widget ui-accordion-icons">
 					<h3 class="phpbb3_opbwb_u ui-accordion-header ui-helper-reset ui-state-default ui-accordion-header-active ui-state-active ui-corner-top ui-accordion-icons ui-state-focus" id="ui-accordion-cookiesList-header-4">
@@ -136,15 +128,15 @@
 								<span class="filteredBy" id="filterByValue"></span>
 							</div>
 						</div>
-						
+
 					</div>
 				</div>
 				<div id="submitFiltersDiv">
 					<input id='submitFiltersButton' type='submit' value=""  i18n_value="addRule"/>
 				</div>
 			</div>
-			
-			
+
+
 			<div class="cookie cookie_details_template">
 				<div class="vertical-commands-row">
 					<a class="deleteOne" i18n_title="Alert_deleteCookie">
@@ -193,8 +185,8 @@
 					</div>
 				</div>
 			</div>
-			
-			
+
+
 			<div id="newCookie" class="ui-accordion ui-widget ui-accordion-icons">
 				<h3 class="phpbb3_opbwb_u ui-accordion-header ui-helper-reset ui-state-default ui-accordion-header-active ui-state-active ui-corner-top ui-accordion-icons ui-state-focus"
 					id="ui-accordion-cookiesList-header-4">
@@ -214,6 +206,8 @@
 						<div><textarea rows="10" class="value input" type="textarea" spellcheck="false"></textarea></div>
 						<label class="formLabel" i18n="domain"></label>
 						<input class="domain input" type="text">
+						<label class="formLabel" i18n="path"></label>
+						<input class="path input" type="text">
 						<label class="formLabel" i18n="expiration"></label>
 						<input class="expiration input" type="text">
 					</div>
@@ -237,7 +231,7 @@
 					</div>
 				</div>
 			</div>
-			
+
 			<div id="pasteCookie" class="ui-accordion ui-widget ui-accordion-icons">
 				<h3 class="phpbb3_opbwb_u ui-accordion-header ui-helper-reset ui-state-default ui-accordion-header-active ui-state-active ui-corner-top ui-accordion-icons ui-state-focus"
 					id="ui-accordion-cookiesList-header-4">
@@ -251,9 +245,9 @@
 					</div>
 				</div>
 			</div>
-			
+
 			<div id="copiedToast" class="toast" i18n="Copied_clipboard"></div>
-			
+
 			<div id="submitDiv">
 				<i id="submitButton" class="fa fa-check" i18n_title="Alert_submitAll"></i>
 				<a id="helpButton" i18n="help" href="http://www.editthiscookie.com/start/" target="_blank">

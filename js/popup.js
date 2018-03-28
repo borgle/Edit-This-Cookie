@@ -1,14 +1,16 @@
 var url;
 var currentTabID;
 var isTabIncognito = false;
-var cookieList = new Array();
+var cookieList = [];
 var newCookie = false;
 var pasteCookie = false;
 var isSeparateWindow = false;
 var createAccordionCallback, createAccordionCallbackArguments;
 var scrollsave;
+var currentLayout = "none";
+var lastInput = "";
 
-$.fx.speeds._default = 200
+$.fx.speeds._default = 200;
 
 jQuery(document).ready(function(){
 	++data.nPopupClicked;
@@ -17,11 +19,12 @@ jQuery(document).ready(function(){
 
 function start() {
 	setLoaderVisible(true);
-	
+
 	var arguments = getUrlVars();
-	if(arguments.url == undefined) {
+	if(arguments.url === undefined) {
 		chrome.tabs.query(
-			{active: true},
+			{active: true,
+			 lastFocusedWindow: true},
 			function(tabs) {
 				url = tabs[0].url;
 				currentTabID = tabs[0].id;
@@ -34,7 +37,7 @@ function start() {
 		isSeparateWindow = true;
 		url = decodeURI(arguments.url);
 		currentTabID = parseInt(decodeURI(arguments.id));
-		isTabIncognito = decodeURI(arguments.incognito) == "true";
+		isTabIncognito = decodeURI(arguments.incognito) === "true";
 		$('input', '#cookieSearchCondition').val(url);
 		document.title = document.title + "-" + url;
 		doSearch();
@@ -66,109 +69,60 @@ function submit(currentTabID) {
 }
 
 function submitAll(currentTabID) {
-	
+
 	var cookies = $(".cookie", "#cookiesList");
-	var nCookiesChangedThisTime = 0;
-	cookies.each(function() {
-		
-		var index = $(".index", 			$(this) ).val();
-		
-		var name 		=  $(".name", 		$(this) ).val();
-		var value 		=  $(".value", 		$(this) ).val();
-		var domain 		=  $(".domain", 	$(this) ).val();
-		var hostOnly 	=  $(".hostOnly",	$(this) ).prop("checked");
-		var path 		=  $(".path", 		$(this) ).val();
-		var secure 		=  $(".secure", 	$(this) ).prop("checked");
-		var httpOnly 	=  $(".httpOnly",	$(this) ).prop("checked");
-		var session 	=  $(".session", 	$(this) ).prop("checked");
-		var storeId 	=  $(".storeId", 	$(this) ).val();
-		 
-		var expiration	=  $(".expiration", $(this) ).scroller('getDate');	//$(".expiration",	$(this) ).val();
-		var expirationDate = (expiration != null) ? expiration.getTime() / 1000.0 : (new Date().getTime()) / 1000.0;
-		
-		var newCookie = {};
-		newCookie.url = buildUrl(secure, domain, path);
-		newCookie.name = name.replace(";", "").replace(",", "");
-		value = value.replace(";","");
-		newCookie.value = value;
-		newCookie.path = path;
-		newCookie.storeId = storeId;
-		if(!hostOnly)
-			newCookie.domain = domain;
-		if(!session)
-			newCookie.expirationDate = expirationDate;
-		newCookie.secure = secure;
-		newCookie.httpOnly = httpOnly;
-		
-		var existingCookie = cookieList[index];
-		if(!compareCookies(newCookie,existingCookie)) {
-			nCookiesChangedThisTime++;
+	var nCookiesToUpdate = cookies.length;
+
+	var onUpdateComplete = function() {
+		data.nCookiesChanged += cookies.length;
+		if(preferences.refreshAfterSubmit) {
+			chrome.tabs.reload(currentTabID, { 'bypassCache': preferences.skipCacheRefresh } );
 		}
-		
-		deleteCookie(newCookie.url, newCookie.name, newCookie.storeId);
-		chrome.cookies.set(newCookie);	
+		doSearch();
+	};
+
+	cookies.each(function() {
+		var cCookie = formCookieData($(this));
+
+		if(cCookie === undefined)
+		{
+			return;
+		}
+
+		deleteCookie(cCookie.url, cCookie.name, cCookie.storeId, function() {
+			chrome.cookies.set(cCookie, function() {
+				if(--nCookiesToUpdate === 0) {
+					onUpdateComplete();
+				}
+			});
+		});
+
 	});
-	data.nCookiesChanged += nCookiesChangedThisTime;
-	
-	if(preferences.refreshAfterSubmit) {
-		chrome.tabs.reload(currentTabID, {'bypassCache': preferences.skipCacheRefresh});
-	}
-	
-	doSearch();
 }
 
 function submitNew() {
-	var newCookie = $("#newCookie");
-	
-	var name 		=  $(".name", 		newCookie ).val();
-	var domain 		=  $(".domain",		newCookie ).val();
-	var path		=  "/";
-	var hostOnly 	=  $(".hostOnly",	newCookie ).prop("checked");
-	var value 		=  $(".value", 		newCookie ).val();
-	var secure 		=  $(".secure", 	newCookie ).prop("checked");
-	var httpOnly 	=  $(".httpOnly",	newCookie ).prop("checked");
-	var session 	=  $(".session", 	newCookie ).prop("checked");
-	
-	var expiration	=  $(".expiration", newCookie).scroller('getDate');
-	var expirationDate = (expiration != null) ? expiration.getTime() / 1000.0 : (new Date().getTime()) / 1000.0;
-	
-	newCookie = {};
-	newCookie.url = buildUrl(secure, domain, path);
-	newCookie.name = name.replace(";", "").replace(",", "");
-	value = value.replace(";","");
-	newCookie.value = value;
-	newCookie.path = path;
-	if(!hostOnly)
-		newCookie.domain = domain;
-	if(!session)
-		newCookie.expirationDate = expirationDate;
-	newCookie.secure = secure;
-	newCookie.httpOnly = httpOnly;
-	
-	deleteCookie(newCookie.url, newCookie.name, newCookie.storeId);
-	chrome.cookies.set(newCookie);
-	
-	++data.nCookiesCreated;
-	
-	/*if(refreshAfterSubmit) {
-		chrome.tabs.reload(currentTabID, {'bypassCache': skipCacheRefresh});
-	}*/
-	
-	doSearch();
+	var cCookie = formCookieData($("#newCookie"));
+	if(cCookie === undefined)
+		return;
+
+	deleteCookie(cCookie.url, cCookie.name, cCookie.storeId, function(){
+		chrome.cookies.set(cCookie, doSearch);
+		++data.nCookiesCreated;
+	});
 }
 
 function createList(filters) {
 	var filteredCookies = [];
-	
-	if(filters == null)
+
+	if(filters === null)
 		filters = {};
-	
-	var filterURL = {}
-	if(filters.url != undefined)
+
+	var filterURL = {};
+	if(filters.url !== undefined)
 		filterURL.url = filters.url;
-	if(filters.domain != undefined)
+	if(filters.domain !== undefined)
 		filterURL.domain = filters.domain;
-	
+
 	if(!isSeparateWindow) {
 		$('#submitDiv').css({
 			'bottom': 0
@@ -176,25 +130,25 @@ function createList(filters) {
 	} else {
 		$('#submitDiv').addClass("submitDivSepWindow");
 	}
-	
+
 	chrome.cookies.getAll(filterURL, function(cks) {
 		var currentC;
 		for(var i=0; i<cks.length; i++) {
 			currentC = cks[i];
-			
-			if(filters.name != undefined && currentC.name.toLowerCase().indexOf(filters.name.toLowerCase()) == -1)
+
+			if(filters.name !== undefined && currentC.name.toLowerCase().indexOf(filters.name.toLowerCase()) === -1)
 				continue;
-			if(filters.domain != undefined && currentC.domain.toLowerCase().indexOf(filters.domain.toLowerCase()) == -1)
+			if(filters.domain !== undefined && currentC.domain.toLowerCase().indexOf(filters.domain.toLowerCase()) === -1)
 				continue;
-			if(filters.secure != undefined && currentC.secure.toLowerCase().indexOf(filters.secure.toLowerCase()) == -1)
+			if(filters.secure !== undefined && currentC.secure.toLowerCase().indexOf(filters.secure.toLowerCase()) === -1)
 				continue;
-			if(filters.session != undefined && currentC.session.toLowerCase().indexOf(filters.session.toLowerCase()) == -1)
+			if(filters.session !== undefined && currentC.session.toLowerCase().indexOf(filters.session.toLowerCase()) === -1)
 				continue;
-			
+
 			for(var x=0; x<data.readOnly.length; x++) {
 				try {
 					var lock = data.readOnly[x];
-					if(lock.name == currentC.name && lock.domain == currentC.domain) {
+					if(lock.name === currentC.name && lock.domain === currentC.domain) {
 						currentC.isProtected = true;
 						break;
 					}
@@ -209,27 +163,26 @@ function createList(filters) {
 
 		$("#cookiesList").empty();
 
-		if(cookieList.length == 0) {
+		if(cookieList.length === 0) {
 			swithLayout();
 			setEvents();
 			setLoaderVisible(false);
 			return;
 		}
-		
+
 		cookieList.sort(function (a, b) {
-			if(preferences.sortCookiesType == "domain_alpha") {
+			if(preferences.sortCookiesType === "domain_alpha") {
 				var compDomain = a.domain.toLowerCase().localeCompare(b.domain.toLowerCase());
 				if(compDomain)
 					return compDomain;
-			} 
+			}
 			return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
 		});
-		
+
 		createAccordionList(cookieList, function(){
 			swithLayout();
 			setEvents();
 			$("input:checkbox").uniform();
-			//$("input").uniform();
 			setLoaderVisible(false);
 		});
 	});
@@ -238,18 +191,18 @@ function createList(filters) {
 function createAccordionList(cks, callback, callbackArguments) {
 	createAccordionCallback = callback;
 	createAccordionCallbackArguments = callbackArguments;
-	
+
 	try {
 		$("#cookiesList").accordion("destroy");
 	} catch(e) {
 		console.warn(e.message)
 	}
 
-	if(cks == null)
+	if(cks === null)
 		cks = cookieList;
 	for(var i=0; i<cks.length; i++) {
 		currentC = cks[i];
-		
+
 	 	var domainText = "";
 	 	if(preferences.showDomain) {
 	 		domainText = currentC.domain;
@@ -259,7 +212,7 @@ function createAccordionList(cks, callback, callbackArguments) {
 	 			domainText = " | " + domainText;
 	 		}
 	 	}
-	 	
+
 	 	var titleText;
 	 	if(preferences.showDomainBeforeName) {
 	 		titleText = $("<p/>").text(domainText).append($("<b/>").text(currentC.name));
@@ -268,23 +221,23 @@ function createAccordionList(cks, callback, callbackArguments) {
 	 	} else {
 	 		titleText = $("<p/>").append($("<b/>").text(currentC.name)).append($("<span/>").text(domainText));
 	 	}
-	 	
+
 	 	var titleElement = $("<h3/>").append($("<a/>").html(titleText.html()).attr("href", "#"));
-	 	
+
 		var cookie = $(".cookie_details_template").clone().removeClass("cookie_details_template");
-		
-		$(".index", cookie).val(i);
-		$(".name", cookie).val(currentC.name);
-		$(".value", cookie).val(currentC.value);
-		$(".domain", cookie).val(currentC.domain);
-		$(".path", cookie).val(currentC.path);
+
+		$(".index",   cookie).val(i);
+		$(".name",    cookie).val(currentC.name);
+		$(".value",   cookie).val(currentC.value);
+		$(".domain",  cookie).val(currentC.domain);
+		$(".path",    cookie).val(currentC.path);
 		$(".storeId", cookie).val(currentC.storeId);
-		
+
 		if(currentC.isProtected)
 			$(".unprotected", cookie).hide();
 		else
 			$(".protected", cookie).hide();
-			
+
 		if(currentC.hostOnly) {
 			$(".domain", cookie).attr("disabled", "disabled");
 			$(".hostOnly", cookie).prop("checked", true);
@@ -299,34 +252,28 @@ function createAccordionList(cks, callback, callbackArguments) {
 			$(".expiration", cookie).attr("disabled", "disabled");
 			$(".session", cookie).prop("checked", true);
 		}
-		
-		var now = new Date();
+
 		var expDate;
 		if(currentC.session) {
-			expDate = new Date()
-			expDate.setFullYear(expDate.getFullYear() + 1)
+			expDate = new Date();
+			expDate.setFullYear(expDate.getFullYear() + 1);
 		} else {
 			expDate = new Date(currentC.expirationDate * 1000.0);
 		}
-		
-		
 		$('.expiration', cookie).val(expDate);
-		//$('.expiration', cookie).scroller('setDate', expDate, true);
-		
+
 		$("#cookiesList").append(titleElement);
 		$("#cookiesList").append(cookie);
 	}
-	
-	//$('textarea', '#cookiesList').autosize({append: "\n"});
-	//$('textarea', '#pasteCookie').autosize({append: "\n"});
-	
+
 	$("#cookiesList").accordion({
 		autoHeight: false,
 		heightStyle: "content",
 		collapsible: true,
 		active: cks.length-1,
 		create: function(event, ui) {
-			if(createAccordionCallback != undefined)
+			$.uniform.update();
+			if(createAccordionCallback !== undefined)
 				createAccordionCallback(createAccordionCallbackArguments);
 		}
 	});
@@ -339,7 +286,7 @@ function importCookies() {
 	error.hide();
 	error.text("For format reference export cookies in JSON");
 	error.html(error.html()+"<br> Also check&nbsp;<a href='http://developer.chrome.com/extensions/cookies.html#type-Cookie' target='_blank'>Developer Chrome Cookie</a><br>Error:");
-	
+
 	try {
 		var cookieArray = $.parseJSON(text);
 		if(Object.prototype.toString.apply(cookieArray) === "[object Object]")
@@ -363,7 +310,8 @@ function importCookies() {
 		error.fadeIn();
 		return;
 	}
-	data.nCookiesImported += nCookiesImportedThisTime
+
+	data.nCookiesImported += nCookiesImportedThisTime;
 	doSearch();
 	return;
 }
@@ -376,15 +324,15 @@ function setEvents() {
 		$("#submitDiv").show();
 	}
 	$("#submitFiltersButton").button();
-	
+
 	$("#submitFiltersDiv").unbind().click(function() {
-		var domainChecked = $(".filterDomain:checked", $(this).parent()).val() != null;
-		var domain = $("#filterByDomain", $(this).parent()).text();
-		var nameChecked = $(".filterName:checked", $(this).parent()).val() != null;
-		var name = $("#filterByName", $(this).parent()).text();
-		var valueChecked = $(".filterValue:checked", $(this).parent()).val() != null;
-		var value = $("#filterByValue", $(this).parent()).text();
-		
+		var domainChecked = $(".filterDomain:checked", $(this).parent()).val() !== null;
+		var domain        = $("#filterByDomain",       $(this).parent()).text();
+		var nameChecked   = $(".filterName:checked",   $(this).parent()).val() !== null;
+		var name          = $("#filterByName",         $(this).parent()).text();
+		var valueChecked  = $(".filterValue:checked",  $(this).parent()).val() !== null;
+		var value         = $("#filterByValue",        $(this).parent()).text();
+
 		var newRule = {};
 		if(domainChecked)
 			newRule.domain = domain;
@@ -392,31 +340,26 @@ function setEvents() {
 			newRule.name = name;
 		if(valueChecked)
 			newRule.value = value;
-		
-		var nCookiesFlaggedThisTime = 0;
+
 		for(var i=0; i<cookieList.length; i++) {
 			var currentCookie = cookieList[i];
 			if(currentCookie.isProtected)
 				continue;
-			
 			if(!filterMatchesCookie(newRule,currentCookie.name,currentCookie.domain,currentCookie.value))
-					continue;
+				continue;
+
 			var tmpUrl = buildUrl(currentCookie.secure, currentCookie.domain, currentCookie.path);
 			deleteCookie(tmpUrl, currentCookie.name, currentCookie.storeId);
-			nCookiesFlaggedThisTime++;
-			cookieList.splice(i,1);
-			i--;
 		}
-		data.nCookiesFlagged += nCookiesFlaggedThisTime;
+		data.nCookiesFlagged += cookieList.length;
 		var exists = addBlockRule(newRule);
-		//if(exists != undefined && exists >= 0)
-			//deleteBlockRule(exists);
+
 		doSearch();
 		return;
 	});
-	
+
 	$("#deleteAllButton").unbind().click(function() {
-		if(cookieList.length == 0)
+		if(cookieList.length === 0)
 			return false;
 
 		var okFunction = function() {
@@ -425,17 +368,17 @@ function setEvents() {
 			data.nCookiesDeleted += nCookiesDeletedThisTime;
 			doSearch();
 		}
-		startAlertDialog(_getMessage("Alert_deleteAll"), okFunction, function(){});
+		startAlertDialog(_getMessage("Alert_deleteAll"), okFunction);
 	});
-	
+
 	if(preferences.showCommandsLabels) {
 		$(".commands-row", ".commands-table").addClass("commands-row-texy");
 	}
-	
+
 	if(preferences.showFlagAndDeleteAll) {
 		$("#flagAllButton").show();
 		$("#flagAllButton").unbind().click(function() {
-			if(cookieList.length == 0)
+			if(cookieList.length === 0)
 				return false;
 			var okFunction = function() {
 				nCookiesFlaggedThisTime = cookieList.length;
@@ -454,41 +397,39 @@ function setEvents() {
 				doSearch();
 				return;
 			}
-			startAlertDialog(_getMessage("flagAll"), okFunction, function(){});
+			startAlertDialog(_getMessage("flagAll"), okFunction);
 		});
 	} else {
 		$("#flagAllButton").hide();
 	}
-	
-	//$("#copyButton").attr("title",preferences.copyCookiesType);
 
 	$("#refreshButton").unbind().click(function() {
-		location.reload(true);
+		if(currentLayout === "new") {
+			clearNewCookieData();
+		} else {
+			location.reload(true);
+		}
 	});
-	
+
 	$("#addCookieButton").unbind().click(function() {
 		newCookie = true;
 		pasteCookie = false;
 		swithLayout("new");
 	});
-	
+
 	$("#backToList").unbind().click(function() {
 		newCookie = false;
 		pasteCookie = false;
 		swithLayout();
 	});
-	
-	$("#clearNew").unbind().click(function() {
-		clearNewCookieData();
-	});
-	
+
 	$("#optionsButton").unbind().click(function() {
 		var urlToOpen = chrome.extension.getURL('options_main_page.html');
 		chrome.tabs.create({
 			url:urlToOpen
 		});
 	});
-	
+
 	$("#copyButton").unbind().click(function() {
 		copyToClipboard(cookiesToString.get(cookieList));
 		data.nCookiesExported += cookieList.length;
@@ -496,49 +437,48 @@ function setEvents() {
 			setTimeout(function(){
 				$("#copiedToast").fadeOut();
 			}, 2500);
-			
+
 		});
 		$(this).animate({ backgroundColor: "#B3FFBD" }, 300, function() {
 			$(this).animate({ backgroundColor: "#EDEDED" }, 500);
 		});
 	});
-	
+
 	$("#pasteButton").unbind().click(function() {
 		newCookie = false;
 		pasteCookie = true;
 		swithLayout("paste");
 	});
-	
+
 	$("#searchButton").unbind().click(function() {
 		$("#searchField").focus();
 		$("#searchField").fadeIn("normal",function(){$("#searchField").focus();});
 		$("#searchField").focus();
 	});
-	
+
 	$("#searchBox").unbind().focusout( function() {
 		$("#searchField").fadeOut();
 	});
-	
+
 	$("#searchField").unbind().keyup(function() {
 		find($(this).val());
 	});
 	$('input', '#cookieSearchCondition').unbind().keyup(doSearch);
 	clearNewCookieData();
-	
+
 	$(".toast").each(function(){
-		//var pos = $(this).position();
 		$(this).css("margin-top", "-" + ( $(this).height()/2 ) + "px" );
 		$(this).css("margin-left", "-" + ( $(this).width()/2 ) + "px" );
 	});
 
 	$('textarea.value, input.domain, input.path').keydown(function (event) {
-	if (event.ctrlKey && event.keyCode == 13) {
-		submit(currentTabID);
-		console.log('trigger save (submit)');
-		event.preventDefault();
-		event.stopPropagation();
-	}
-});
+		if (event.ctrlKey && event.keyCode === 13) {
+			submit(currentTabID);
+			console.log('trigger save (submit)');
+			event.preventDefault();
+			event.stopPropagation();
+		}
+	});
 
 	setCookieEvents();
 }
@@ -552,7 +492,7 @@ function setCookieEvents() {
 		else
 			$(".domain", cookie).removeAttr("disabled");
 	});
-	
+
 	$(".session").click(function() {
 		var cookie = $(this).closest(".cookie");
 		var checked = $(this).prop("checked");
@@ -561,7 +501,7 @@ function setCookieEvents() {
 		else
 			$(".expiration", cookie).removeAttr("disabled");
 	});
-	
+
 	$(".deleteOne").click(function() {
 		var cookie = $(this).closest(".cookie");
 		var name 	= $(".name", cookie).val();
@@ -578,34 +518,34 @@ function setCookieEvents() {
 						$(this).remove();
 						swithLayout();
 					});
-					
+
 				} else {
 					location.reload(true);
 				}
 			});
 			++data.nCookiesDeleted;
-		}
-		startAlertDialog(_getMessage("Alert_deleteCookie") + ": \"" + name + "\"?", okFunction, function(){})
+		};
+		startAlertDialog(_getMessage("Alert_deleteCookie") + ": \"" + name + "\"?", okFunction)
 	});
 	$(".flagOne").click(function() {
 		var cookie = $(this).closest(".cookie");
-		var domain 	= $(".domain", 	cookie).val();
-		var name 	= $(".name", 	cookie).val();
-		var value 	= $(".value", 	cookie).val();
-		
-		$("#filterByDomain","#cookieFilter").text(domain);
-		$("#filterByName","#cookieFilter").text(name);
-		$("#filterByValue","#cookieFilter").text(value);
-		
+		var domain = $(".domain", cookie).val();
+		var name = $(".name", cookie).val();
+		var value = $(".value", cookie).val();
+
+		$("#filterByDomain", "#cookieFilter").text(domain);
+		$("#filterByName", "#cookieFilter").text(name);
+		$("#filterByValue", "#cookieFilter").text(value);
+
 		swithLayout("flag");
 	});
-	
+
 	$(".protectOne").click(function() {
 		var cookie = $(this).closest(".cookie");
 		var titleName = $("b", cookie.prev()).first();
 		var index = $(".index", cookie).val();
 		isProtected = switchReadOnlyRule(cookieList[index]);
-		
+
 		cookieList[index].isProtected = isProtected;
 		if(isProtected) {
 			$(".unprotected", cookie).fadeOut('fast',function(){
@@ -619,53 +559,23 @@ function setCookieEvents() {
 			titleName.css("color","#000");
 		}
 	});
-	
-	var now = new Date();
-	$('.expiration').scroller({
-		preset: 'datetime',
-		minDate: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-		maxDate: new Date(2050, now.getMonth(), now.getDate()),
-		dateFormat: "dd/mm/yy",
-		timeFormat: "hh:ii A",
-		theme: 'android-ics light',
-		display: 'modal',
-		mode: 'clickpick'
-	});
-	$('.expiration').each(function(){
-		$(this).scroller('setDate', new Date($(this).val()), true);
-	});
-	$('#show').click(function(){
-		var cookie = $(this).closest(".cookie");
-		scrollsave = $('body').scrollTop();
-		$("html").scrollTop(0);
-		$('.expiration', cookie).scroller('show'); 
-		return false;
-	});
-	$('#clear').click(function () {
-		var cookie = $(this).closest(".cookie");
-		$('.expiration', cookie).val('');
-		$('body').scrollTop(scrollsave);
-		return false;
-	});
-	
-	$(".domain",$("#newCookie")).val(getHost(url));
 }
 
 function startAlertDialog(title, ok_callback, cancel_callback) {
-	if(ok_callback != undefined) {
-		if(!preferences.showAlerts) {
-			ok_callback();
-			return;
-		}
-		$("#alert_ok").unbind().click(function() {
-			$("#alert_wrapper").hide();
-			ok_callback();
-		});
-	} else {
+	if(ok_callback == undefined) {
+		return
+	}
+	if(!preferences.showAlerts) {
+		ok_callback();
 		return;
 	}
-	
-	if(cancel_callback != undefined) {
+
+	$("#alert_ok").unbind().click(function() {
+		$("#alert_wrapper").hide();
+		ok_callback();
+	});
+
+	if(cancel_callback !== undefined) {
 		$("#alert_cancel").show();
 		$("#alert_cancel").unbind().click(function() {
 			$("#alert_wrapper").hide('fade');
@@ -679,23 +589,34 @@ function startAlertDialog(title, ok_callback, cancel_callback) {
 }
 
 function clearNewCookieData() {
-	var myDate = new Date();
-	myDate.setFullYear(myDate.getFullYear() + 1)
-	
-	$(".expiration","#newCookie").attr("value",myDate);
+	var cookieForm = $("#newCookie");
+	$(".index",    cookieForm).val("");
+	$(".name",     cookieForm).val("");
+	$(".value",    cookieForm).val("");
+	$(".domain",   cookieForm).val(getHost(url));
+	$(".hostOnly", cookieForm).prop("checked", false);
+	$(".path",     cookieForm).val("/");
+	$(".secure",   cookieForm).prop("checked", false);
+	$(".httpOnly", cookieForm).prop("checked", false);
+	$(".session",  cookieForm).prop("checked", false);
+
+	var expDate = new Date();
+	expDate.setFullYear(expDate.getFullYear() + 1);
+	$(".expiration", cookieForm).val(expDate);
+
+	$.uniform.update();
 }
 
-var lastInput = "";
 function find(pattern) {
-	if(pattern == lastInput)
+	if(pattern === lastInput)
 		return;
+
 	lastInput = pattern;
-	var shiftsMade = 0;
 	$($(".cookie", "#cookiesList").get().reverse()).each(function(){
 		var name = $(".name", $(this)).val();
 		var node = $(this);
 		var h3 = $(this).prev();
-		if(pattern != "" && name.toLowerCase().indexOf(pattern.toLowerCase()) != -1) {
+		if(pattern !== "" && name.toLowerCase().indexOf(pattern.toLowerCase()) !== -1) {
 			h3.addClass("searchResult");
 			node.detach();
 			h3.detach();
@@ -709,67 +630,25 @@ function find(pattern) {
 	$("#cookiesList").accordion( "option" , "active" , cookieList.length );
 }
 
-/*
-function resizeCommandsFontSize() {				//http://stackoverflow.com/questions/4165836/javascript-scale-text-to-fit-in-fixed-div
-	var largestCommandWidth = 0;
-	var size = 0;
-	var maxWidth = parseInt($('body').width(), 10)+1;
-	var maxHeight = 0;
-	var resizer = null;
-	
-	$('.commands-table').each(function(){
-		if(resizer==null || $(this).width()>largestCommandWidth) {
-			largestCommandWidth = $(this).width();
-			resizer = $(this);
-		}
-	});
-	maxHeight = $(resizer).height();
-	resizer = $(resizer).clone();
-	$(resizer).attr('id','hidden-commands-resizer').hide().appendTo(document.body);
-	
-	size = parseInt(resizer.css("font-size"), 10);
-	while(resizer.width()<maxWidth && resizer.height()<=maxHeight && size<15) {
-		resizer.css("font-size", ++size);
-	}
-	if( resizer.height()>maxHeight )
-		--size;
-	$(".commands-table").css("font-size", size);
-	$(resizer).detach()
-}
-*/
-
-/*
-	LAYOUTS = [
-		"default",
-		"list",
-		"empty",
-		"flag",
-		"paste",
-		"new"
-	]
-*/
-var lastLayout = "none";
 function swithLayout(newLayout) {
-	if(newLayout == undefined) {
+	if(newLayout === undefined)
 		newLayout = "default";
-	}
-	if(lastLayout == newLayout)
+	if(currentLayout === newLayout)
 		return;
-	if(newLayout != "default")
-		lastLayout = newLayout;
-	
-	if(newLayout == "default") {
+	currentLayout = newLayout;
+
+	if(newLayout === "default") {
 		$("#newCookie").slideUp();
 		$("#pasteCookie").slideUp();
 		$("#cookieFilter").slideUp();
 		$("#submitFiltersButton").slideUp();
-		
+
 		if($("h3", "#cookiesList").length) {
 			swithLayout("list");
 		} else {
 			swithLayout("empty");
 		}
-	} else if(newLayout == "list") {
+	} else if(newLayout === "list") {
 		$(".commands-table").first().animate({opacity: 0}, function() {
 			$("#deleteAllButton").show();
 			if(preferences.showFlagAndDeleteAll)
@@ -785,7 +664,7 @@ function swithLayout(newLayout) {
 		$("#noCookies").slideUp();
 		$("#cookiesList").slideDown();
 		$("#submitDiv").show();
-	} else if(newLayout == "empty") {
+	} else if(newLayout === "empty") {
 		$(".commands-table").first().animate({opacity: 0}, function() {
 			$("#deleteAllButton").hide();
 			$("#flagAllButton").hide();
@@ -811,30 +690,79 @@ function swithLayout(newLayout) {
 			$("#pasteButton").hide();
 			$("#searchButton").hide();
 			$(".commands-table").first().animate({opacity: 1});
-			$("#cookieSearchCondition").hide();
 		});
+
 		$("#noCookies").slideUp();
 		$("#cookiesList").slideUp();
-		if(newLayout == "flag") {
+		$("#cookieSearchCondition").slideUp();
+
+		if(newLayout === "flag") {
+			$("#submitFiltersButton").slideDown();
+			$("#cookieFilter").slideDown();
 			$("#newCookie").slideUp();
 			$("#pasteCookie").slideUp();
-			$("#cookieFilter").slideDown();
-			$("#submitFiltersButton").slideDown();
-			$("#submitDiv").hide();
-		} else if(newLayout == "paste") {
-			$("#newCookie").slideUp();
+			$("#submitDiv").slideUp();
+		} else if(newLayout === "paste") {
 			$("#pasteCookie").slideDown();
+			$("#newCookie").slideUp();
 			$("#cookieFilter").slideUp();
 			$("#submitFiltersButton").slideUp();
-			$("#submitDiv").show();
+			$("#submitDiv").slideDown();
 			$(".value", "#new").focus();
-		} else if(newLayout == "new") {
+		} else if(newLayout === "new") {
 			$("#newCookie").slideDown();
 			$("#pasteCookie").slideUp();
 			$("#cookieFilter").slideUp();
 			$("#submitFiltersButton").slideUp();
-			$("#submitDiv").show();
+			$("#submitDiv").slideDown();
 			$('#newCookie input.name').focus();
 		}
 	}
+}
+
+function formCookieData(form) {
+	var index      = $(".index",      form).val();
+	var name       = $(".name",       form).val();
+	var value      = $(".value",      form).val();
+	var domain     = $(".domain",     form).val();
+	var hostOnly   = $(".hostOnly",   form).prop("checked");
+	var path       = $(".path",       form).val();
+	var secure     = $(".secure",     form).prop("checked");
+	var httpOnly   = $(".httpOnly",   form).prop("checked");
+	var session    = $(".session",    form).prop("checked");
+	var storeId    = $(".storeId",    form).val();
+	var expiration = $(".expiration", form).val();
+
+	var newCookie = {};
+	newCookie.url = buildUrl(secure, domain, path);
+	newCookie.name = name.replace(";", "").replace(",", "");
+	value = value.replace(";", "");
+	newCookie.value = value;
+	newCookie.path = path;
+	newCookie.storeId = storeId;
+	if(!hostOnly)
+		newCookie.domain = domain;
+	if(!session) {
+		var expirationDate = new Date(expiration).getTime() / 1000;
+		newCookie.expirationDate = expirationDate;
+
+		// If the expiration date is not valid, tell the user by making the
+		// invalid date red and showing it in the accordion
+		if(isNaN(expirationDate)) {
+			console.log("Invalid date");
+			$(".expiration", form).addClass("error");
+			$(".expiration", form).focus();
+			if(index !== undefined) {
+				// This is an existing cookie, not a new one
+				$("#cookiesList").accordion("option", "active", parseInt(index));
+			}
+			return undefined;
+		} else {
+			$(".expiration", form).removeClass("error");
+		}
+	}
+	newCookie.secure = secure;
+	newCookie.httpOnly = httpOnly;
+
+	return newCookie;
 }
